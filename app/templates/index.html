@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="container">
+        <h2 class="mb-4">Results:</h2>
+        <table class="table" border="1">
+            <thead class="thead-light">
+                <tr>
+                      <th scope="col">id</th>
+                      <th scope="col">address</th>
+                      <th scope="col">words_count</th>
+                      <th scope="col">http_status_code</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ti in results %}
+                <tr>
+                    <td>{{ ti.id }}</td>
+                    <td>{{ ti.address }}</td>
+                    <td>{{ ti.words_count }}</td>
+                    <td>{{ ti.http_status_code }}</td>
+                </tr>
+                {% endfor %}
+            <tbody>
+        </table>
+    </div>
+
+    <div class="container">
+        <h2 class="mb-4">Tasks:</h2>
+        <table class="table" border="1">
+            <thead class="thead-light">
+                <tr>
+                      <th scope="col">id</th>
+                      <th scope="col">address</th>
+                      <th scope="col">timestamp</th>
+                      <th scope="col">task_status</th>
+                      <th scope="col">http_status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ti in tasks %}
+                <tr>
+                    <td>{{ ti.id }}</td>
+                    <td>{{ ti.address }}</td>
+                    <td>{{ ti.timestamp }}</td>
+                    <td>{{ ti.task_status }}</td>
+                    <td>{{ ti.http_status }}</td>
+                </tr>
+                {% endfor %}
+            <tbody>
+        </table>
+    </div>
+
+{% endblock %}

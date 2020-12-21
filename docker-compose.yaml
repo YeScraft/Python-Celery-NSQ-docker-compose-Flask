@@ -1,0 +1,175 @@
+version: '3'
+
+services: 
+  nsqlookupd:
+    image: nsqio/nsq
+    command: /nsqlookupd
+    ports: 
+      - "4160:4160"
+      - "4161:4161"
+
+  nsqd:
+    image: nsqio/nsq
+    command: /nsqd --lookupd-tcp-address=nsqlookupd:4160
+    depends_on: 
+      - nsqlookupd
+    ports: 
+      - "4150:4150"
+      - "4151:4151"
+
+  nsqadmin:
+    image: nsqio/nsq
+    command: /nsqadmin --lookupd-http-address=nsqlookupd:4161
+    depends_on: 
+      - nsqlookupd
+    ports: 
+      - "4171:4171"
+
+  postgres:
+    image: postgres:13-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=results
+
+  rabbit:
+    hostname: rabbit
+    image: rabbitmq:3-management
+    environment:
+        - RABBITMQ_DEFAULT_USER=admin
+        - RABBITMQ_DEFAULT_PASS=mypass
+    ports:
+        - "5672:5672"
+
+  celery_low:
+          build:
+            context: ./app
+            dockerfile: DockerFile
+          command: >
+            bash -c "cd app && celery -A sender worker -n low -l info -Q low_priority"
+          user: nobody
+          volumes:
+              - .:/app
+          environment:
+            - RABBITMQ_DEFAULT_USER=admin
+            - RABBITMQ_DEFAULT_PASS=mypass
+            - RABBITMQ_PORT=5672
+#          links:
+#            - rabbit
+          depends_on:
+              - postgres
+              - nsqd
+              - rabbit
+
+  celery_high:
+          build:
+            context: ./app
+            dockerfile: DockerFile
+          command: >
+            bash -c "cd app && celery -A parser worker -n high -l info -Q high_priority"
+          user: nobody
+          volumes:
+              - .:/app
+          environment:
+            - RABBITMQ_DEFAULT_USER=admin
+            - RABBITMQ_DEFAULT_PASS=mypass
+            - RABBITMQ_PORT=5672
+#          links:
+#            - rabbit
+          depends_on:
+              - postgres
+              - nsqd
+              - rabbit
+
+  server:
+          build:
+            context: ./app
+            dockerfile: DockerFile
+          command: bash -c "cd app && python server.py"
+          ports:
+            - "5000:5000"
+          volumes:
+            - .:/app
+          environment:
+            - POSTGRES_USER=user
+            - POSTGRES_PASSWORD=password
+            - POSTGRES_DB=results
+            - PORT=5432
+            - POSTGRES_LH=postgres
+          depends_on:
+              - postgres
+              - nsqd
+              - bd_engine
+#          links:
+#            - celery_low
+#            - postgres
+
+  bd_engine:
+          build:
+            context: ./app
+            dockerfile: DockerFile
+          command: bash -c "cd app && python bd_engine.py"
+          volumes:
+              - .:/app
+          environment:
+            - NSQD_LH=nsqd
+            - NSQD_P=4150
+            - POSTGRES_USER=user
+            - POSTGRES_PASSWORD=password
+            - POSTGRES_DB=results
+            - PORT=5432
+            - POSTGRES_LH=postgres
+#          links:
+#            - celery_low
+#            - celery_high
+#            - nsqd
+#            - postgres
+          depends_on:
+              - postgres
+              - nsqd
+              - celery_high
+              - celery_low
+              - sender
+
+  parser_listener:
+          build:
+            context: ./app
+            dockerfile: DockerFile
+          command: bash -c "cd app && python parser_listener.py"
+          volumes:
+              - .:/app
+          environment:
+            - NSQD_LH=nsqd
+            - NSQD_P=4150
+#          links:
+#            - celery_low
+#            - celery_high
+#            - nsqd
+          depends_on:
+              - postgres
+              - nsqd
+              - celery_high
+              - celery_low
+              - sender
+
+  sender:
+          build:
+            context: ./app
+            dockerfile: DockerFile
+          command: bash -c "cd app && python sender.py"
+          volumes:
+              - .:/app
+          environment:
+            - NSQD_LH=nsqd
+            - NSQD_P=4150
+#          links:
+#            - celery_low
+#            - celery_high
+#            - nsqd
+          depends_on:
+              - postgres
+              - nsqd
+              - celery_high
+              - celery_low
