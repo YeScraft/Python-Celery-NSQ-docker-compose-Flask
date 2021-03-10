@@ -1,4 +1,4 @@
-# Skillfactory-module-e8_9-YeSergey
+# Skillfactory-module-e8_9-YeSergey (Сервис подсчёта с очередями python, Celery, NSQ, docker (compose), Flask)
 Для работы с приложением:
 1. Скачайте приложение.
 2. В консоле перейдите в папку с проектом на уровень файла docker-compose.yaml;
